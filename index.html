@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -797,14 +796,14 @@ body.dark-mode .leaflet-popup-close-button {
 
   /* 半展開 */
   .sidebar.sheet-half {
-    height: 55%;
-    height: 55dvh;
+    height: 75%;
+    height: 75dvh;
   }
 
   /* 完全展開 */
   .sidebar.sheet-expanded {
-    height: 89%;
-    height: 89dvh;
+    height: 95%;
+    height: 95dvh;
   }
 
   /* 拖曳時取消動畫，跟手移動 */
@@ -930,6 +929,25 @@ body.dark-mode .leaflet-popup-close-button {
 @media (prefers-reduced-motion: reduce) {
   .sidebar {
     transition: none;
+  }
+}
+@media (max-width: 760px) {
+  .sidebar-top {
+    max-height: 40%;
+  }
+
+  .list-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .store-card {
+    padding: 16px;
+  }
+
+  .store-name {
+    font-size: 16px;
   }
 }
 </style>
@@ -2240,7 +2258,7 @@ sheetHandle.addEventListener("pointermove", event => {
   const viewportHeight = window.innerHeight;
 
   const minHeight = 94;
-  const maxHeight = viewportHeight * .89;
+  const maxHeight = viewportHeight * .95;
 
   const nextHeight = Math.min(
     maxHeight,
@@ -2269,8 +2287,8 @@ function finishSheetDrag(event) {
   const finalHeight = dragStartHeight + delta;
 
   const collapsedHeight = 94;
-  const halfHeight = viewportHeight * .55;
-  const expandedHeight = viewportHeight * .89;
+  const halfHeight = viewportHeight * .75;
+  const expandedHeight = viewportHeight * .95;
 
   const options = [
     { state:"collapsed", height:collapsedHeight },
