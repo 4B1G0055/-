@@ -950,6 +950,40 @@ body.dark-mode .leaflet-popup-close-button {
     font-size: 16px;
   }
 }
+
+/* 手機版：滑動餐廳時收起篩選區，騰出列表空間 */
+.mobile-filter-toggle { display: none; }
+@media (max-width: 760px) {
+  .sidebar-top {
+    transition: max-height .25s ease, padding .25s ease, opacity .2s ease;
+  }
+  .sidebar.filters-collapsed .sidebar-top {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .mobile-filter-toggle {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 16px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+  }
+  .sidebar.sheet-collapsed .mobile-filter-toggle { display: none; }
+}
+
 </style>
 </head>
 
@@ -981,7 +1015,7 @@ body.dark-mode .leaflet-popup-close-button {
       </div>
     </div>
 
-    <div class="sidebar-top">
+    <div class="sidebar-top" id="mobileFilters">
       <div class="eyebrow">CAMPUS FOOD GUIDE</div>
       <h1>校園美食地圖</h1>
 
@@ -1041,6 +1075,12 @@ body.dark-mode .leaflet-popup-close-button {
         <span class="result-count" id="resultCount"></span>
       </div>
     </div>
+
+    <button class="mobile-filter-toggle" id="mobileFilterToggle"
+      type="button" aria-controls="mobileFilters" aria-expanded="true">
+      <span id="mobileFilterLabel">⌃ 收起搜尋與篩選</span>
+      <span aria-hidden="true">⚙</span>
+    </button>
 
     <div class="list-area" id="listArea">
 
@@ -2349,6 +2389,39 @@ sheetHandle.addEventListener("keydown", event => {
     }
   }
 });
+
+
+/* 手機版：滑動店家列表時自動收起篩選工具 */
+const mobileFilterToggle = document.getElementById("mobileFilterToggle");
+const mobileFilterLabel = document.getElementById("mobileFilterLabel");
+const listAreaForFilters = document.getElementById("listArea");
+let mobileFiltersCollapsed = false;
+
+function setMobileFiltersCollapsed(collapsed) {
+  mobileFiltersCollapsed = collapsed;
+  sidebar.classList.toggle("filters-collapsed", collapsed);
+  mobileFilterToggle.setAttribute("aria-expanded", String(!collapsed));
+  mobileFilterLabel.textContent = collapsed
+    ? "⌄ 展開搜尋與篩選"
+    : "⌃ 收起搜尋與篩選";
+}
+
+mobileFilterToggle.addEventListener("click", () => {
+  setMobileFiltersCollapsed(!mobileFiltersCollapsed);
+});
+
+let previousListScrollTop = 0;
+listAreaForFilters.addEventListener("scroll", () => {
+  if (!isMobile() || mobileFiltersCollapsed || sheetState === "collapsed") {
+    previousListScrollTop = listAreaForFilters.scrollTop;
+    return;
+  }
+  const currentTop = listAreaForFilters.scrollTop;
+  if (currentTop > 12 && currentTop > previousListScrollTop) {
+    setMobileFiltersCollapsed(true);
+  }
+  previousListScrollTop = currentTop;
+}, { passive: true });
 
 /* =========================
    14. 初始化
