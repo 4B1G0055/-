@@ -1,0 +1,2358 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>校園美食地圖</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+:root {
+  --accent: #62c9bb;
+  --accent-rgb: 98,201,187;
+  --accent-text: #17201f;
+  --page: #15191d;
+  --panel: #20302f;
+  --card: #2b3938;
+  --input: #33413f;
+  --text: #f1f4f6;
+  --muted: #b3bec7;
+  --border: #435653;
+  --shadow: 0 6px 24px rgba(0,0,0,.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: "Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* =========================
+   電腦版主要布局
+========================= */
+
+.app {
+  display: grid;
+  grid-template-columns: 390px minmax(0,1fr);
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  z-index: 1000;
+}
+
+.sidebar-top {
+  flex-shrink: 0;
+  padding: 20px 19px 14px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb),.17),
+    transparent 85%
+  );
+}
+
+.eyebrow {
+  margin-bottom: 7px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.subtitle {
+  margin: 8px 0 15px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* =========================
+   搜尋與篩選
+========================= */
+
+.search-box {
+  position: relative;
+  margin-bottom: 13px;
+}
+
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px 13px 12px 39px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--input);
+  color: var(--text);
+  outline: none;
+  font-size: 13px;
+}
+
+.search-box input::placeholder {
+  color: var(--muted);
+}
+
+.section-label {
+  margin: 11px 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.chip {
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--input);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chip.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.price-row label {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.price-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input);
+  color: var(--text);
+  outline: none;
+  font-size: 12px;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.action-btn {
+  padding: 11px 8px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--input);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.action-btn:hover {
+  border-color: var(--accent);
+}
+
+.action-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.action-btn.active {
+  background: rgba(var(--accent-rgb),.19);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.filter-row label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.result-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* =========================
+   餐廳列表
+========================= */
+
+.list-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+}
+
+.store-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.store-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 13px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform .2s, border-color .2s;
+}
+
+.store-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.store-card.selected {
+  border-color: var(--accent);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(var(--accent-rgb),.16),
+      transparent
+    ),
+    var(--card);
+}
+
+.store-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.store-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.store-type {
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.favorite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--input);
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.favorite-btn.active {
+  color: #f08ba8;
+  border-color: #f08ba8;
+}
+
+.status {
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status.open {
+  background: #d9f2e4;
+  color: #176a43;
+}
+
+.status.closed {
+  background: #edf0f2;
+  color: #68757e;
+}
+
+body.dark-mode .status.open {
+  background: #234b39;
+  color: #9be4ba;
+}
+
+body.dark-mode .status.closed {
+  background: #394149;
+  color: #c0c9d0;
+}
+
+.store-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.meta-tag {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--input);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.store-hours {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 11px;
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nav-btn:hover {
+  background: rgba(var(--accent-rgb),.12);
+}
+
+.empty {
+  padding: 45px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+/* =========================
+   隨機抽餐廳
+========================= */
+
+.random-result {
+  display: none;
+  position: relative;
+  margin-bottom: 13px;
+  padding: 13px 38px 13px 13px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.random-result.show {
+  display: block;
+}
+
+.random-result-label {
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.random-result-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.random-result-note {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.random-close {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+/* =========================
+   外觀設定
+========================= */
+
+.theme-panel {
+  flex-shrink: 0;
+  padding: 9px 15px;
+  border-top: 1px solid var(--border);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(var(--accent-rgb),.12),
+      transparent
+    ),
+    var(--panel);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 7px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.theme-arrow {
+  font-size: 20px;
+  transition: transform .25s;
+}
+
+.theme-panel.expanded .theme-arrow {
+  transform: rotate(180deg);
+}
+
+.theme-content {
+  display: none;
+  padding: 12px 4px 8px;
+  border-top: 1px solid var(--border);
+}
+
+.theme-panel.expanded .theme-content {
+  display: block;
+}
+
+.theme-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.theme-heading strong {
+  font-size: 13px;
+}
+
+.reset-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--input);
+}
+
+.mode-btn {
+  padding: 9px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.color-options {
+  display: grid;
+  grid-template-columns: repeat(8,1fr);
+  gap: 8px;
+}
+
+.color-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 3px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.color-btn.active {
+  border-color: var(--accent);
+}
+
+.color-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.theme-note {
+  margin-top: 10px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+/* =========================
+   地圖
+========================= */
+
+.map-area {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background: var(--page);
+}
+
+.map-label {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 500;
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+body.dark-mode .leaflet-tile {
+  filter:
+    grayscale(75%)
+    invert(92%)
+    hue-rotate(180deg)
+    brightness(78%)
+    contrast(90%);
+}
+
+.theme-marker {
+  border: none;
+  background: transparent;
+}
+
+.theme-marker-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 4px;
+  background: var(--accent);
+  transform: rotate(-45deg);
+  box-shadow: 0 4px 12px rgba(0,0,0,.35);
+}
+
+.theme-marker-pin::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-text);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--card);
+  color: var(--text);
+}
+
+.leaflet-popup-content-wrapper {
+  border: 1px solid var(--border);
+}
+
+.popup-name {
+  margin-bottom: 5px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.popup-type {
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.popup-info {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.popup-link {
+  display: inline-block;
+  margin-top: 9px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+body.dark-mode .leaflet-control-zoom a {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+body.dark-mode .leaflet-control-attribution {
+  background: rgba(25,29,34,.88);
+  color: #c3cbd2;
+}
+
+body.dark-mode .leaflet-control-attribution a {
+  color: #a9d0ef;
+}
+
+body.dark-mode .leaflet-popup-close-button {
+  color: #d7dfe5 !important;
+}
+
+/* =========================
+   手機版專用：底部抽屜
+========================= */
+
+/* 電腦版不顯示拖曳把手 */
+.mobile-sheet-header {
+  display: none;
+}
+
+@media (max-width: 760px) {
+
+  html, body {
+    overflow: hidden;
+  }
+
+  .app {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* 地圖全螢幕 */
+  .map-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* 餐廳列表浮在地圖上方 */
+  .sidebar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 55%;
+    height: 55dvh;
+    z-index: 1000;
+
+    border-right: none;
+    border-top: 1px solid var(--border);
+    border-radius: 22px 22px 0 0;
+
+    box-shadow: 0 -10px 35px rgba(0,0,0,.25);
+
+    transition: height .28s ease;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+
+  /* 最小化：只留下抽屜標題 */
+  .sidebar.sheet-collapsed {
+    height: 94px;
+    height: calc(94px + env(safe-area-inset-bottom,0px));
+  }
+
+  /* 半展開 */
+  .sidebar.sheet-half {
+    height: 55%;
+    height: 55dvh;
+  }
+
+  /* 完全展開 */
+  .sidebar.sheet-expanded {
+    height: 89%;
+    height: 89dvh;
+  }
+
+  /* 拖曳時取消動畫，跟手移動 */
+  .sidebar.sheet-dragging {
+    transition: none;
+  }
+
+  .mobile-sheet-header {
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 74px;
+    padding: 9px 16px 12px;
+    background: var(--panel);
+    border-radius: 22px 22px 0 0;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .mobile-sheet-header:active {
+    cursor: grabbing;
+  }
+
+  .drag-handle {
+    width: 43px;
+    height: 5px;
+    margin-bottom: 11px;
+    border-radius: 99px;
+    background: var(--muted);
+    opacity: .65;
+  }
+
+  .sheet-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .sheet-title {
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .sheet-subtitle {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .sheet-expand-icon {
+    color: var(--accent);
+    font-size: 20px;
+  }
+
+  .sidebar-top {
+    padding: 12px 15px;
+    max-height: 47%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sidebar-top h1,
+  .sidebar-top .eyebrow,
+  .sidebar-top .subtitle {
+    display: none;
+  }
+
+  .sidebar-top .search-box {
+    margin-bottom: 8px;
+  }
+
+  .sidebar-top .section-label {
+    margin-top: 9px;
+  }
+
+  .list-area {
+    min-height: 0;
+    padding: 11px 13px;
+  }
+
+  .theme-panel {
+    padding: 7px 14px;
+  }
+
+  /* 收起時不顯示內部內容 */
+  .sidebar.sheet-collapsed .sidebar-top,
+  .sidebar.sheet-collapsed .list-area,
+  .sidebar.sheet-collapsed .theme-panel {
+    display: none;
+  }
+
+  .map-label {
+    top: 12px;
+    right: 12px;
+    font-size: 11px;
+  }
+
+  /* Leaflet 控制項避開底部面板 */
+  .leaflet-bottom {
+    margin-bottom: 105px;
+  }
+
+  .leaflet-top {
+    margin-top: 55px;
+  }
+}
+
+@media (max-width: 380px) {
+  .card-actions {
+    flex-direction: column;
+  }
+
+  .color-options {
+    gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <aside class="sidebar sheet-half" id="sidebar">
+
+    <!-- 手機版拖曳把手 -->
+    <div
+      class="mobile-sheet-header"
+      id="sheetHandle"
+      role="button"
+      tabindex="0"
+      aria-label="展開或收合餐廳列表"
+      aria-expanded="true"
+    >
+      <div class="drag-handle"></div>
+
+      <div class="sheet-header-content">
+        <div>
+          <div class="sheet-title">🍜 校園美食地圖</div>
+          <div class="sheet-subtitle" id="sheetSummary">
+            上滑查看餐廳，下滑查看地圖
+          </div>
+        </div>
+
+        <span class="sheet-expand-icon" id="sheetIcon">⌃</span>
+      </div>
+    </div>
+
+    <div class="sidebar-top">
+      <div class="eyebrow">CAMPUS FOOD GUIDE</div>
+      <h1>校園美食地圖</h1>
+
+      <p class="subtitle">
+        探索校園周邊美食，快速找到今天想吃的餐廳。
+      </p>
+
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="搜尋店名或餐廳類型..."
+          aria-label="搜尋餐廳"
+        >
+      </div>
+
+      <div class="section-label">餐廳分類</div>
+      <div class="categories" id="categories"></div>
+
+      <div class="price-row">
+        <label for="priceFilter">💰 價格篩選</label>
+        <select id="priceFilter">
+          <option value="all">不限價格</option>
+          <option value="low">100 元以下</option>
+          <option value="medium">101～200 元</option>
+          <option value="high">201 元以上</option>
+          <option value="unknown">價格未提供</option>
+        </select>
+      </div>
+
+      <div class="action-row">
+        <button
+          class="action-btn primary"
+          id="randomBtn"
+          type="button"
+        >
+          🎲 今天吃什麼？
+        </button>
+
+        <button
+          class="action-btn"
+          id="favoritesOnlyBtn"
+          type="button"
+          aria-pressed="false"
+        >
+          ♡ 我的收藏
+        </button>
+      </div>
+
+      <div class="filter-row">
+        <label>
+          <input type="checkbox" id="openOnly">
+          只顯示營業中
+        </label>
+
+        <span class="result-count" id="resultCount"></span>
+      </div>
+    </div>
+
+    <div class="list-area" id="listArea">
+
+      <div
+        class="random-result"
+        id="randomResult"
+        role="status"
+        aria-live="polite"
+      >
+        <button
+          class="random-close"
+          id="randomClose"
+          type="button"
+          aria-label="關閉抽籤結果"
+        >×</button>
+
+        <div class="random-result-label">
+          🎉 今天就吃這家！
+        </div>
+
+        <div class="random-result-name" id="randomName"></div>
+        <div class="random-result-note" id="randomNote"></div>
+      </div>
+
+      <div class="store-list" id="storeList"></div>
+    </div>
+
+    <!-- 可收合外觀設定 -->
+    <div class="theme-panel" id="themePanel">
+
+      <button
+        class="theme-toggle"
+        id="themeToggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="themeContent"
+      >
+        <span>🎨 外觀設定</span>
+        <span class="theme-arrow">⌄</span>
+      </button>
+
+      <div class="theme-content" id="themeContent">
+
+        <div class="theme-heading">
+          <strong>選擇喜歡的外觀</strong>
+          <button class="reset-btn" id="resetTheme">
+            恢復預設
+          </button>
+        </div>
+
+        <div class="mode-switch">
+          <button class="mode-btn" id="lightMode">
+            ☀️ 淺色模式
+          </button>
+          <button class="mode-btn" id="darkMode">
+            🌙 深色模式
+          </button>
+        </div>
+
+        <div class="color-options" id="colorOptions"></div>
+        <div class="theme-note" id="themeNote"></div>
+
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="map-area">
+    <div id="map"></div>
+    <div class="map-label">📍 校園周邊美食</div>
+  </main>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="stores-data.js"></script>
+
+<script>
+/* =========================
+   1. 基本資料
+========================= */
+
+const stores = Array.isArray(window.storesData)
+  ? window.storesData
+  : [];
+
+const days = [
+  "Sun", "Mon", "Tue", "Wed",
+  "Thu", "Fri", "Sat"
+];
+
+// 校園附近的固定參考點
+// 不是使用者目前位置
+const CAMPUS_POINT = {
+  latitude: 23.024,
+  longitude: 120.226
+};
+
+let selectedCategory = "全部";
+let selectedStoreIndex = null;
+let favoritesOnly = false;
+
+const FAVORITES_KEY = "campusFoodFavorites";
+
+/* =========================
+   2. 工具函式
+========================= */
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]
+  );
+}
+
+function getStoreId(store) {
+  return JSON.stringify([
+    store.name,
+    store.latitude,
+    store.longitude
+  ]);
+}
+
+function getPrice(store) {
+  const raw = store.price;
+
+  if (
+    raw === undefined ||
+    raw === null ||
+    String(raw).trim() === ""
+  ) {
+    return null;
+  }
+
+  const price = Number(raw);
+
+  return Number.isFinite(price) && price >= 0
+    ? price
+    : null;
+}
+
+function getPriceText(store) {
+  const price = getPrice(store);
+
+  return price === null
+    ? "價格未提供"
+    : `約 NT$${price}`;
+}
+
+/* =========================
+   3. 營業時間
+========================= */
+
+function toMinutes(time) {
+  const parts = String(time).trim().split(":").map(Number);
+
+  if (
+    parts.length !== 2 ||
+    !Number.isInteger(parts[0]) ||
+    !Number.isInteger(parts[1]) ||
+    parts[0] < 0 ||
+    parts[0] > 24 ||
+    parts[1] < 0 ||
+    parts[1] > 59 ||
+    (parts[0] === 24 && parts[1] !== 0)
+  ) {
+    return NaN;
+  }
+
+  return parts[0] * 60 + parts[1];
+}
+
+function parseRanges(value) {
+  if (
+    !value ||
+    String(value).trim().toLowerCase() === "closed"
+  ) {
+    return [];
+  }
+
+  return String(value).split(",").map(item => {
+    const [startText, endText] = item.trim().split("-");
+
+    if (!startText || !endText) return null;
+
+    const start = toMinutes(startText);
+    const end = toMinutes(endText);
+
+    if (
+      !Number.isFinite(start) ||
+      !Number.isFinite(end)
+    ) {
+      return null;
+    }
+
+    return { start, end };
+  }).filter(Boolean);
+}
+
+function isStoreOpen(store, now = new Date()) {
+  const todayIndex = now.getDay();
+  const yesterdayIndex = (todayIndex + 6) % 7;
+
+  const today = days[todayIndex];
+  const yesterday = days[yesterdayIndex];
+
+  const current =
+    now.getHours() * 60 + now.getMinutes();
+
+  const hours = store.opening_hours || {};
+
+  for (const range of parseRanges(hours[today])) {
+    if (range.end > range.start) {
+      if (
+        current >= range.start &&
+        current < range.end
+      ) {
+        return true;
+      }
+    } else if (range.end < range.start) {
+      if (current >= range.start) {
+        return true;
+      }
+    }
+  }
+
+  for (const range of parseRanges(hours[yesterday])) {
+    if (
+      range.end < range.start &&
+      current < range.end
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getTodayHours(store) {
+  const today = days[new Date().getDay()];
+  const value = (store.opening_hours || {})[today];
+
+  if (
+    !value ||
+    String(value).trim().toLowerCase() === "closed"
+  ) {
+    return "今日公休";
+  }
+
+  return String(value).replaceAll(",", "、");
+}
+
+/* =========================
+   4. 距離與導航
+========================= */
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = degree => degree * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(
+    Math.sqrt(a),
+    Math.sqrt(1 - a)
+  );
+
+  return R * c;
+}
+
+function getDistance(store) {
+  return calculateDistance(
+    CAMPUS_POINT.latitude,
+    CAMPUS_POINT.longitude,
+    Number(store.latitude),
+    Number(store.longitude)
+  );
+}
+
+function getDistanceText(store) {
+  const distance = getDistance(store);
+
+  return distance < 1000
+    ? `直線約 ${Math.round(distance)} 公尺`
+    : `直線約 ${(distance / 1000).toFixed(1)} 公里`;
+}
+
+function getNavigationUrl(store) {
+  const origin =
+    `${CAMPUS_POINT.latitude},${CAMPUS_POINT.longitude}`;
+
+  const destination =
+    `${store.latitude},${store.longitude}`;
+
+  return (
+    "https://www.google.com/maps/dir/?api=1" +
+    "&origin=" + encodeURIComponent(origin) +
+    "&destination=" + encodeURIComponent(destination) +
+    "&travelmode=walking"
+  );
+}
+
+/* =========================
+   5. 收藏功能
+========================= */
+
+let favorites = new Set();
+
+function loadFavorites() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(FAVORITES_KEY)
+    );
+
+    if (Array.isArray(saved)) {
+      favorites = new Set(saved);
+    }
+  } catch (error) {
+    favorites = new Set();
+  }
+}
+
+function saveFavorites() {
+  try {
+    localStorage.setItem(
+      FAVORITES_KEY,
+      JSON.stringify([...favorites])
+    );
+  } catch (error) {}
+}
+
+function isFavorite(store) {
+  return favorites.has(getStoreId(store));
+}
+
+function toggleFavorite(store) {
+  const id = getStoreId(store);
+
+  if (favorites.has(id)) {
+    favorites.delete(id);
+  } else {
+    favorites.add(id);
+  }
+
+  saveFavorites();
+  renderStores();
+}
+
+/* =========================
+   6. 地圖
+========================= */
+
+const map = L.map("map").setView(
+  [CAMPUS_POINT.latitude, CAMPUS_POINT.longitude],
+  16
+);
+
+L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 19,
+    attribution: "Tiles &copy; Esri"
+  }
+).addTo(map);
+
+const markerLayer = L.layerGroup().addTo(map);
+const markerMap = new Map();
+
+const validStores = stores
+  .map((store, index) => ({ store, index }))
+  .filter(({ store }) =>
+    store.latitude != null &&
+    store.longitude != null &&
+    store.latitude !== "" &&
+    store.longitude !== "" &&
+    Number.isFinite(Number(store.latitude)) &&
+    Number.isFinite(Number(store.longitude))
+  );
+
+if (validStores.length > 0) {
+  const bounds = L.latLngBounds(
+    validStores.map(({ store }) => [
+      Number(store.latitude),
+      Number(store.longitude)
+    ])
+  );
+
+  map.fitBounds(bounds, {
+    padding: [55, 55],
+    maxZoom: 16
+  });
+}
+
+/* =========================
+   7. 篩選功能
+========================= */
+
+const searchInput =
+  document.getElementById("searchInput");
+
+const openOnly =
+  document.getElementById("openOnly");
+
+const priceFilter =
+  document.getElementById("priceFilter");
+
+const categoriesEl =
+  document.getElementById("categories");
+
+const storeListEl =
+  document.getElementById("storeList");
+
+const resultCountEl =
+  document.getElementById("resultCount");
+
+const favoritesOnlyBtn =
+  document.getElementById("favoritesOnlyBtn");
+
+function createCategories() {
+  const types = [
+    "全部",
+    ...new Set(
+      stores.map(store => store.type).filter(Boolean)
+    )
+  ];
+
+  categoriesEl.innerHTML = "";
+
+  types.forEach(type => {
+    const button = document.createElement("button");
+
+    button.className = "chip";
+    button.type = "button";
+    button.textContent = type;
+
+    if (type === selectedCategory) {
+      button.classList.add("active");
+    }
+
+    button.addEventListener("click", () => {
+      selectedCategory = type;
+      createCategories();
+      hideRandomResult();
+      renderStores();
+    });
+
+    categoriesEl.appendChild(button);
+  });
+}
+
+function matchesPrice(store) {
+  const filter = priceFilter.value;
+  const price = getPrice(store);
+
+  if (filter === "all") return true;
+  if (filter === "unknown") return price === null;
+  if (price === null) return false;
+
+  if (filter === "low") return price <= 100;
+
+  if (filter === "medium") {
+    return price > 100 && price <= 200;
+  }
+
+  if (filter === "high") return price > 200;
+
+  return true;
+}
+
+function getFilteredStores() {
+  const keyword =
+    searchInput.value.trim().toLowerCase();
+
+  return validStores.filter(({ store }) => {
+    const matchesSearch =
+      String(store.name || "")
+        .toLowerCase()
+        .includes(keyword) ||
+      String(store.type || "")
+        .toLowerCase()
+        .includes(keyword);
+
+    const matchesCategory =
+      selectedCategory === "全部" ||
+      store.type === selectedCategory;
+
+    const matchesOpen =
+      !openOnly.checked ||
+      isStoreOpen(store);
+
+    const matchesFavorite =
+      !favoritesOnly ||
+      isFavorite(store);
+
+    return (
+      matchesSearch &&
+      matchesCategory &&
+      matchesOpen &&
+      matchesFavorite &&
+      matchesPrice(store)
+    );
+  });
+}
+
+/* =========================
+   8. 餐廳卡片
+========================= */
+
+function highlightStore(index) {
+  selectedStoreIndex = index;
+
+  document.querySelectorAll(".store-card")
+    .forEach(card => {
+      card.classList.toggle(
+        "selected",
+        Number(card.dataset.index) === index
+      );
+    });
+}
+
+function focusStore(store, index) {
+  const marker = markerMap.get(index);
+
+  if (!marker) return;
+
+  highlightStore(index);
+
+  // 手機版：點選餐廳後，收起面板以查看地圖
+  if (isMobile()) {
+    setSheetState("collapsed");
+  }
+
+  map.flyTo(
+    [
+      Number(store.latitude),
+      Number(store.longitude)
+    ],
+    Math.max(map.getZoom(), 17),
+    { duration: .7 }
+  );
+
+  setTimeout(() => {
+    if (markerLayer.hasLayer(marker)) {
+      marker.openPopup();
+    }
+  }, 450);
+}
+
+function renderStores() {
+  const filtered = getFilteredStores();
+
+  storeListEl.innerHTML = "";
+  markerLayer.clearLayers();
+  markerMap.clear();
+
+  resultCountEl.textContent =
+    `${filtered.length} 間餐廳`;
+
+  updateSheetSummary(filtered.length);
+
+  if (filtered.length === 0) {
+    storeListEl.innerHTML = `
+      <div class="empty">
+        🔎<br>
+        找不到符合條件的餐廳<br>
+        試試其他分類、價格或取消篩選
+      </div>
+    `;
+    return;
+  }
+
+  filtered.forEach(({ store, index }) => {
+    const open = isStoreOpen(store);
+    const favorite = isFavorite(store);
+    const statusText = open ? "營業中" : "休息中";
+
+    const themeIcon = L.divIcon({
+      className: "theme-marker",
+      html: '<div class="theme-marker-pin"></div>',
+      iconSize: [30,36],
+      iconAnchor: [15,32],
+      popupAnchor: [0,-30]
+    });
+
+    const marker = L.marker(
+      [
+        Number(store.latitude),
+        Number(store.longitude)
+      ],
+      { icon: themeIcon }
+    ).addTo(markerLayer);
+
+    markerMap.set(index, marker);
+
+    const navUrl = getNavigationUrl(store);
+
+    marker.bindPopup(`
+      <div style="min-width:190px">
+        <div class="popup-name">
+          ${escapeHTML(store.name)}
+        </div>
+
+        <div class="popup-type">
+          ${escapeHTML(store.type)}
+        </div>
+
+        <div class="popup-info">
+          ${statusText}<br>
+          🕒 ${escapeHTML(getTodayHours(store))}<br>
+          💰 ${escapeHTML(getPriceText(store))}<br>
+          📍 ${escapeHTML(getDistanceText(store))}
+        </div>
+
+        <a
+          class="popup-link"
+          href="${navUrl}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🧭 Google Maps 步行導航
+        </a>
+      </div>
+    `);
+
+    const card = document.createElement("div");
+
+    card.className = "store-card";
+    card.dataset.index = index;
+    card.tabIndex = 0;
+    card.setAttribute("role","button");
+
+    card.setAttribute(
+      "aria-label",
+      `查看 ${store.name} 的地圖位置`
+    );
+
+    if (selectedStoreIndex === index) {
+      card.classList.add("selected");
+    }
+
+    card.innerHTML = `
+      <div class="store-card-top">
+        <div>
+          <div class="store-name">
+            ${escapeHTML(store.name)}
+          </div>
+
+          <div class="store-type">
+            ${escapeHTML(store.type)}
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <span class="status ${open ? "open" : "closed"}">
+            ${statusText}
+          </span>
+
+          <button
+            class="favorite-btn ${favorite ? "active" : ""}"
+            type="button"
+            aria-label="${favorite ? "取消收藏" : "收藏"} ${escapeHTML(store.name)}"
+            aria-pressed="${favorite}"
+          >
+            ${favorite ? "♥" : "♡"}
+          </button>
+        </div>
+      </div>
+
+      <div class="store-meta">
+        <span class="meta-tag">
+          💰 ${escapeHTML(getPriceText(store))}
+        </span>
+
+        <span class="meta-tag">
+          📍 ${escapeHTML(getDistanceText(store))}
+        </span>
+      </div>
+
+      <div class="store-hours">
+        🕒 今日：${escapeHTML(getTodayHours(store))}
+      </div>
+
+      <div class="card-bottom">
+        <a
+          class="nav-btn"
+          href="${navUrl}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🧭 步行導航
+        </a>
+      </div>
+    `;
+
+    card.addEventListener("click", event => {
+      if (event.target.closest("button,a")) return;
+      focusStore(store,index);
+    });
+
+    card.addEventListener("keydown", event => {
+      if (
+        event.target === card &&
+        (event.key === "Enter" || event.key === " ")
+      ) {
+        event.preventDefault();
+        focusStore(store,index);
+      }
+    });
+
+    card.querySelector(".favorite-btn")
+      .addEventListener("click", event => {
+        event.stopPropagation();
+        toggleFavorite(store);
+      });
+
+    marker.on("click", () => {
+      highlightStore(index);
+
+      if (isMobile()) {
+        setSheetState("collapsed");
+      }
+    });
+
+    storeListEl.appendChild(card);
+  });
+}
+
+/* =========================
+   9. 隨機抽餐廳
+========================= */
+
+const randomResult =
+  document.getElementById("randomResult");
+
+function hideRandomResult() {
+  randomResult.classList.remove("show");
+}
+
+function pickRandomStore() {
+  const candidates = getFilteredStores();
+
+  if (candidates.length === 0) {
+    document.getElementById("randomName").textContent =
+      "目前沒有可以抽選的餐廳";
+
+    document.getElementById("randomNote").textContent =
+      "請調整搜尋或篩選條件。";
+
+    randomResult.classList.add("show");
+    return;
+  }
+
+  const randomIndex =
+    Math.floor(Math.random() * candidates.length);
+
+  const chosen = candidates[randomIndex];
+
+  document.getElementById("randomName").textContent =
+    chosen.store.name;
+
+  document.getElementById("randomNote").textContent =
+    `${chosen.store.type || "未分類"} · ` +
+    `${getPriceText(chosen.store)} · ` +
+    `${getDistanceText(chosen.store)}`;
+
+  randomResult.classList.add("show");
+
+  document.getElementById("listArea").scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+  // 手機版先保留抽籤結果供使用者查看
+  if (isMobile()) {
+    setSheetState("half");
+
+    map.flyTo(
+      [
+        Number(chosen.store.latitude),
+        Number(chosen.store.longitude)
+      ],
+      17,
+      { duration: .7 }
+    );
+
+    highlightStore(chosen.index);
+  } else {
+    focusStore(chosen.store,chosen.index);
+  }
+}
+
+document.getElementById("randomBtn")
+  .addEventListener("click",pickRandomStore);
+
+document.getElementById("randomClose")
+  .addEventListener("click",hideRandomResult);
+
+/* =========================
+   10. 篩選事件
+========================= */
+
+searchInput.addEventListener("input", () => {
+  hideRandomResult();
+  renderStores();
+});
+
+openOnly.addEventListener("change", () => {
+  hideRandomResult();
+  renderStores();
+});
+
+priceFilter.addEventListener("change", () => {
+  hideRandomResult();
+  renderStores();
+});
+
+favoritesOnlyBtn.addEventListener("click", () => {
+  favoritesOnly = !favoritesOnly;
+
+  favoritesOnlyBtn.classList.toggle(
+    "active",
+    favoritesOnly
+  );
+
+  favoritesOnlyBtn.setAttribute(
+    "aria-pressed",
+    String(favoritesOnly)
+  );
+
+  favoritesOnlyBtn.textContent =
+    favoritesOnly ? "♥ 只看收藏中" : "♡ 我的收藏";
+
+  hideRandomResult();
+  renderStores();
+});
+
+setInterval(renderStores,60000);
+
+/* =========================
+   11. 主題系統
+========================= */
+
+const themes = [
+  { name:"薄荷綠",light:"#16766f",dark:"#62c9bb" },
+  { name:"海洋藍",light:"#2878a5",dark:"#77bced" },
+  { name:"奶茶棕",light:"#a47750",dark:"#d6ae85" },
+  { name:"薰衣草紫",light:"#81709d",dark:"#b6a1e4" },
+  { name:"櫻花粉",light:"#d77b9a",dark:"#f3a5bf" },
+  { name:"活力橘",light:"#df843d",dark:"#f4aa69" },
+  { name:"森林綠",light:"#47734e",dark:"#91ca96" },
+  { name:"石墨灰",light:"#46515d",dark:"#b2c0cc" }
+];
+
+let themeMode = "dark";
+let themeIndex = 0;
+
+function hexToRgb(hex) {
+  const value = hex.replace("#","");
+
+  return {
+    r: parseInt(value.slice(0,2),16),
+    g: parseInt(value.slice(2,4),16),
+    b: parseInt(value.slice(4,6),16)
+  };
+}
+
+function mixColors(color1,color2,weight) {
+  const a = hexToRgb(color1);
+  const b = hexToRgb(color2);
+
+  const mix = (x,y) =>
+    Math.round(x * weight + y * (1 - weight));
+
+  const toHex = value =>
+    value.toString(16).padStart(2,"0");
+
+  return (
+    "#" +
+    toHex(mix(a.r,b.r)) +
+    toHex(mix(a.g,b.g)) +
+    toHex(mix(a.b,b.b))
+  );
+}
+
+function saveTheme() {
+  try {
+    localStorage.setItem(
+      "campusFoodAppearance",
+      JSON.stringify({
+        mode:themeMode,
+        index:themeIndex
+      })
+    );
+  } catch (error) {}
+}
+
+function loadTheme() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem("campusFoodAppearance")
+    );
+
+    if (
+      saved &&
+      ["light","dark"].includes(saved.mode) &&
+      Number.isInteger(saved.index) &&
+      saved.index >= 0 &&
+      saved.index < themes.length
+    ) {
+      themeMode = saved.mode;
+      themeIndex = saved.index;
+    }
+  } catch (error) {}
+}
+
+function createColorOptions() {
+  const container =
+    document.getElementById("colorOptions");
+
+  container.innerHTML = "";
+
+  themes.forEach((theme,index) => {
+    const button = document.createElement("button");
+
+    button.className = "color-btn";
+    button.type = "button";
+    button.title = theme.name;
+    button.setAttribute("aria-label",theme.name);
+
+    if (index === themeIndex) {
+      button.classList.add("active");
+    }
+
+    const dot = document.createElement("span");
+    dot.className = "color-dot";
+
+    dot.style.background =
+      themeMode === "dark"
+        ? theme.dark
+        : theme.light;
+
+    button.appendChild(dot);
+
+    button.addEventListener("click",() => {
+      themeIndex = index;
+      applyTheme();
+    });
+
+    container.appendChild(button);
+  });
+}
+
+function applyTheme() {
+  const theme = themes[themeIndex];
+  const dark = themeMode === "dark";
+  const accent = dark ? theme.dark : theme.light;
+  const rgb = hexToRgb(accent);
+
+  const root = document.documentElement;
+
+  document.body.classList.toggle("dark-mode",dark);
+
+  root.style.setProperty("--accent",accent);
+
+  root.style.setProperty(
+    "--accent-rgb",
+    `${rgb.r},${rgb.g},${rgb.b}`
+  );
+
+  root.style.setProperty(
+    "--accent-text",
+    dark ? "#17201f" : "#ffffff"
+  );
+
+  if (dark) {
+    root.style.setProperty("--page","#15191d");
+
+    root.style.setProperty(
+      "--panel",
+      mixColors(accent,"#1b2025",.16)
+    );
+
+    root.style.setProperty(
+      "--card",
+      mixColors(accent,"#272d33",.13)
+    );
+
+    root.style.setProperty(
+      "--input",
+      mixColors(accent,"#30373d",.11)
+    );
+
+    root.style.setProperty(
+      "--border",
+      mixColors(accent,"#414950",.25)
+    );
+
+    root.style.setProperty("--text","#f1f4f6");
+    root.style.setProperty("--muted","#b3bec7");
+
+    root.style.setProperty(
+      "--shadow",
+      "0 6px 24px rgba(0,0,0,.20)"
+    );
+  } else {
+    root.style.setProperty(
+      "--page",
+      mixColors(accent,"#f7f9fa",.035)
+    );
+
+    root.style.setProperty(
+      "--panel",
+      mixColors(accent,"#ffffff",.10)
+    );
+
+    root.style.setProperty(
+      "--card",
+      mixColors(accent,"#ffffff",.035)
+    );
+
+    root.style.setProperty(
+      "--input",
+      mixColors(accent,"#f3f6f7",.12)
+    );
+
+    root.style.setProperty(
+      "--border",
+      mixColors(accent,"#e0e6e9",.20)
+    );
+
+    root.style.setProperty("--text","#1d2b30");
+    root.style.setProperty("--muted","#64747c");
+
+    root.style.setProperty(
+      "--shadow",
+      "0 5px 20px rgba(0,0,0,.06)"
+    );
+  }
+
+  document.getElementById("lightMode")
+    .classList.toggle("active",!dark);
+
+  document.getElementById("darkMode")
+    .classList.toggle("active",dark);
+
+  document.getElementById("themeNote").textContent =
+    `${dark ? "深色" : "淺色"}模式 · ${theme.name}`;
+
+  createColorOptions();
+  saveTheme();
+}
+
+document.getElementById("lightMode")
+  .addEventListener("click",() => {
+    themeMode = "light";
+    applyTheme();
+  });
+
+document.getElementById("darkMode")
+  .addEventListener("click",() => {
+    themeMode = "dark";
+    applyTheme();
+  });
+
+document.getElementById("resetTheme")
+  .addEventListener("click",() => {
+    themeMode = "dark";
+    themeIndex = 0;
+    applyTheme();
+  });
+
+/* =========================
+   12. 外觀設定收合
+========================= */
+
+const themeToggle =
+  document.getElementById("themeToggle");
+
+const themePanel =
+  document.getElementById("themePanel");
+
+themeToggle.addEventListener("click",() => {
+  const expanded =
+    themePanel.classList.toggle("expanded");
+
+  themeToggle.setAttribute(
+    "aria-expanded",
+    String(expanded)
+  );
+
+  // 手機版展開外觀設定時，讓面板有足夠空間
+  if (expanded && isMobile()) {
+    setSheetState("expanded");
+  }
+});
+
+/* =========================
+   13. 手機版底部抽屜
+========================= */
+
+const sidebar =
+  document.getElementById("sidebar");
+
+const sheetHandle =
+  document.getElementById("sheetHandle");
+
+const sheetSummary =
+  document.getElementById("sheetSummary");
+
+const sheetIcon =
+  document.getElementById("sheetIcon");
+
+let sheetState = "half";
+
+function isMobile() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
+function updateSheetSummary(count) {
+  if (count === undefined) {
+    count = getFilteredStores().length;
+  }
+
+  sheetSummary.textContent =
+    `${count} 間餐廳 · 上滑展開，下滑查看地圖`;
+}
+
+function setSheetState(state) {
+  if (!["collapsed","half","expanded"].includes(state)) {
+    return;
+  }
+
+  sheetState = state;
+
+  sidebar.classList.remove(
+    "sheet-collapsed",
+    "sheet-half",
+    "sheet-expanded"
+  );
+
+  sidebar.classList.add("sheet-" + state);
+
+  sheetHandle.setAttribute(
+    "aria-expanded",
+    String(state !== "collapsed")
+  );
+
+  sheetIcon.textContent =
+    state === "expanded" ? "⌄" : "⌃";
+
+  // 收合時取消搜尋框焦點，避免手機鍵盤擋住地圖
+  if (state === "collapsed" &&
+      sidebar.contains(document.activeElement) &&
+      document.activeElement !== sheetHandle) {
+    document.activeElement.blur();
+  }
+}
+
+// 點一下把手，依序切換
+function cycleSheetState() {
+  if (!isMobile()) return;
+
+  if (sheetState === "collapsed") {
+    setSheetState("half");
+  } else if (sheetState === "half") {
+    setSheetState("expanded");
+  } else {
+    setSheetState("collapsed");
+  }
+}
+
+// 支援滑鼠與觸控拖曳
+let dragStartY = 0;
+let dragStartHeight = 0;
+let dragActive = false;
+let dragMoved = false;
+
+sheetHandle.addEventListener("pointerdown", event => {
+  if (!isMobile()) return;
+
+  dragActive = true;
+  dragMoved = false;
+  dragStartY = event.clientY;
+  dragStartHeight = sidebar.getBoundingClientRect().height;
+
+  sidebar.classList.add("sheet-dragging");
+
+  sheetHandle.setPointerCapture(event.pointerId);
+});
+
+sheetHandle.addEventListener("pointermove", event => {
+  if (!dragActive || !isMobile()) return;
+
+  const delta = dragStartY - event.clientY;
+
+  if (Math.abs(delta) > 6) {
+    dragMoved = true;
+  }
+
+  if (!dragMoved) return;
+
+  const viewportHeight = window.innerHeight;
+
+  const minHeight = 94;
+  const maxHeight = viewportHeight * .89;
+
+  const nextHeight = Math.min(
+    maxHeight,
+    Math.max(minHeight, dragStartHeight + delta)
+  );
+
+  sidebar.style.height = nextHeight + "px";
+});
+
+function finishSheetDrag(event) {
+  if (!dragActive) return;
+
+  dragActive = false;
+  sidebar.classList.remove("sheet-dragging");
+
+  const delta = dragStartY - event.clientY;
+
+  sidebar.style.height = "";
+
+  if (!dragMoved) {
+    cycleSheetState();
+    return;
+  }
+
+  const viewportHeight = window.innerHeight;
+  const finalHeight = dragStartHeight + delta;
+
+  const collapsedHeight = 94;
+  const halfHeight = viewportHeight * .55;
+  const expandedHeight = viewportHeight * .89;
+
+  const options = [
+    { state:"collapsed", height:collapsedHeight },
+    { state:"half", height:halfHeight },
+    { state:"expanded", height:expandedHeight }
+  ];
+
+  options.sort(
+    (a,b) =>
+      Math.abs(a.height - finalHeight) -
+      Math.abs(b.height - finalHeight)
+  );
+
+  setSheetState(options[0].state);
+}
+
+sheetHandle.addEventListener(
+  "pointerup",
+  finishSheetDrag
+);
+
+sheetHandle.addEventListener(
+  "pointercancel",
+  () => {
+    dragActive = false;
+    sidebar.classList.remove("sheet-dragging");
+    sidebar.style.height = "";
+    setSheetState(sheetState);
+  }
+);
+
+// 鍵盤操作
+sheetHandle.addEventListener("keydown", event => {
+  if (!isMobile()) return;
+
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    cycleSheetState();
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+
+    if (sheetState === "collapsed") {
+      setSheetState("half");
+    } else {
+      setSheetState("expanded");
+    }
+  }
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+
+    if (sheetState === "expanded") {
+      setSheetState("half");
+    } else {
+      setSheetState("collapsed");
+    }
+  }
+});
+
+/* =========================
+   14. 初始化
+========================= */
+
+loadFavorites();
+loadTheme();
+applyTheme();
+createCategories();
+renderStores();
+
+setSheetState("half");
+
+setTimeout(() => {
+  map.invalidateSize();
+},150);
+
+// 裝置旋轉或調整視窗時重新計算地圖大小
+window.addEventListener("resize",() => {
+  map.invalidateSize();
+});
+
+</script>
+</body>
+</html>
